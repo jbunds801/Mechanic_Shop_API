@@ -31,7 +31,9 @@ def get_customers():
     query = select(Customer)
     customers = db.session.execute(query).scalars().all()
 
-    return customers_schema.jsonify(customers)
+    if customers:
+        return customers_schema.jsonify(customers)
+    return jsonify({"error": "No customers found."}), 404
 
 
 # get one customer
@@ -41,7 +43,7 @@ def get_customer(customer_id):
 
     if customer:
         return customer_schema.jsonify(customer), 200
-    return jsonify({"error": "Member not found."}), 400
+    return jsonify({"error": "Customer not found."}), 400
 
 
 # update one customer
