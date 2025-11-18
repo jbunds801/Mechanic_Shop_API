@@ -15,7 +15,7 @@ def create_customer():
         return jsonify(e.messages), 400
 
     query = select(Customer).where(Customer.email == customer_data["email"])
-    existing_customer = db.session.execute(query).scalars().all()
+    existing_customer = db.session.execute(query).scalars().first()
     if existing_customer:
         return jsonify({"error": "Email already associated with an account"}), 400
 
@@ -43,7 +43,7 @@ def get_customer(customer_id):
 
     if customer:
         return customer_schema.jsonify(customer), 200
-    return jsonify({"error": "Customer not found."}), 400
+    return jsonify({"error": "Customer not found."}), 404
 
 
 # update one customer
@@ -52,7 +52,7 @@ def update_customer(customer_id):
     customer = db.session.get(Customer, customer_id)
 
     if not customer:
-        return jsonify({"error": "Customer not found"}), 400
+        return jsonify({"error": "Customer not found"}), 404
 
     try:
         customer_data = customer_schema.load(request.json)
@@ -72,7 +72,7 @@ def delete_customer(customer_id):
     customer = db.session.get(Customer, customer_id)
 
     if not customer:
-        return jsonify({"error": "Customer not found."}), 400
+        return jsonify({"error": "Customer not found."}), 404
 
     db.session.delete(customer)
     db.session.commit()

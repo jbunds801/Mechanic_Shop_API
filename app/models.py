@@ -18,7 +18,7 @@ class Customer(db.Model):
     __tablename__ = "customers"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
+    name = db.Column(db.String(255), nullable=False, unique=True)
     email = db.Column(db.String(360))
     phone = db.Column(db.String(15), nullable=False)
 
@@ -28,7 +28,7 @@ class Customer(db.Model):
 class ServiceTicket(db.Model):
     __tablename__ = "service_tickets"
 
-    id = db.Column(db.Integer, primary_key=True, nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
     VIN = db.Column(db.String(17), nullable=False)
     service_date = db.Column(db.Date, nullable=False)
     service_desc = db.Column(db.String(255), nullable=False)
@@ -43,11 +43,11 @@ class ServiceTicket(db.Model):
 class Mechanic(db.Model):
     __tablename__ = "mechanics"
 
-    id = db.Column(db.Integer, primary_key=True, nullable=False)
-    name = db.Column(db.String(260), nullable=False)
-    email = db.Column(db.String(360), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(260), nullable=False, unique=True)
+    email = db.Column(db.String(360), nullable=False, unique=True)
     phone = db.Column(db.String(15), nullable=False)
-    salary = db.Column(nullable=False)
+    salary = db.Column(db.Float, nullable=False)
 
     tickets = db.relationship(
         "ServiceTicket", secondary=service_mechanics, back_populates="mechanics"

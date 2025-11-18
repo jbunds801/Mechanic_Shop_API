@@ -6,7 +6,6 @@ from app.models import Mechanic, db
 from . import mechanics_bp
 
 
-# do I want mechanics to be queried by email or an employee number or something
 # create new mechanic
 @mechanics_bp.route("/", methods=["POST"])
 def create_mechanic():
@@ -16,7 +15,7 @@ def create_mechanic():
         return jsonify(e.messages), 400
 
     query = select(Mechanic).where(Mechanic.email == mechanic_data["email"])
-    existing_mechanic = db.session.execute(query).scalars().all()
+    existing_mechanic = db.session.execute(query).scalars().first()
     if existing_mechanic:
         return jsonify({"error": "Email already associated with an account"}), 400
 
@@ -36,6 +35,7 @@ def get_mechanics():
         return mechanics_schema.jsonify(mechanics)
     return jsonify({"error": "No mechanics found."}), 404
 
+
 # get one mechanic
 @mechanics_bp.route("/<int:mechanic_id>", methods=["GET"])
 def get_mechanic(mechanic_id):
@@ -43,7 +43,7 @@ def get_mechanic(mechanic_id):
 
     if mechanic:
         return mechanic_schema.jsonify(mechanic), 200
-    return jsonify({"error": "Mechanic not found."}), 400
+    return jsonify({"error": "Mechanic not found."}), 404
 
 
 # update one mechanic
@@ -52,7 +52,7 @@ def update_mechanic(mechanic_id):
     mechanic = db.session.get(Mechanic, mechanic_id)
 
     if not mechanic:
-        return jsonify({"error": "Mechanic not found"}), 400
+        return jsonify({"error": "Mechanic not found"}), 404
 
     try:
         mechanic_data = mechanic_schema.load(request.json)
@@ -72,7 +72,7 @@ def delete_mechanic(mechanic_id):
     mechanic = db.session.get(Mechanic, mechanic_id)
 
     if not mechanic:
-        return jsonify({"error": "Mechanic not found."}), 400
+        return jsonify({"error": "Mechanic not found."}), 404
 
     db.session.delete(mechanic)
     db.session.commit()

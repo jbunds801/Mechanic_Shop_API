@@ -3,6 +3,9 @@ from app.models import Customer
 
 
 class CustomerSchema(ma.SQLAlchemyAutoSchema):
+    name = ma.String(required=True)
+    phone = ma.String(required=True)
+
     class Meta:
         model = Customer
         load_instance = False
