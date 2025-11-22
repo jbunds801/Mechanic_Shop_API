@@ -3,11 +3,13 @@ from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select
 from app.models import Customer, db
+from app.extensions import limiter
 from . import customers_bp
 
 
 # create new customer
 @customers_bp.route("/", methods=["POST"])
+@limiter.limit("7 per hour")
 def create_customer():
     try:
         customer_data = customer_schema.load(request.json)
@@ -27,6 +29,8 @@ def create_customer():
 
 # get all customers
 @customers_bp.route("/", methods=["GET"])
+@limiter.limit("100 per day")
+
 def get_customers():
     query = select(Customer)
     customers = db.session.execute(query).scalars().all()
@@ -38,6 +42,7 @@ def get_customers():
 
 # get one customer
 @customers_bp.route("/<int:customer_id>", methods=["GET"])
+@limiter.limit("100 per day")
 def get_customer(customer_id):
     customer = db.session.get(Customer, customer_id)
 
@@ -48,6 +53,7 @@ def get_customer(customer_id):
 
 # update one customer
 @customers_bp.route("/<int:customer_id>", methods=["PUT"])
+@limiter.limit("7 per day")
 def update_customer(customer_id):
     customer = db.session.get(Customer, customer_id)
 
@@ -68,6 +74,7 @@ def update_customer(customer_id):
 
 # delete customer
 @customers_bp.route("/<int:customer_id>", methods=["DELETE"])
+@limiter.limit("7 per day")
 def delete_customer(customer_id):
     customer = db.session.get(Customer, customer_id)
 

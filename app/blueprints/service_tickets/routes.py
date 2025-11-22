@@ -3,11 +3,13 @@ from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select
 from app.models import ServiceTicket, db, Mechanic, Customer
+from app.extensions import limiter
 from . import service_tickets_bp
 
 
 # create new service ticket
 @service_tickets_bp.route("/", methods=["POST"])
+@limiter.limit("7 per hour")
 def create_service_ticket():
     try:
         service_ticket_data = service_ticket_schema.load(request.json)
@@ -37,6 +39,7 @@ def create_service_ticket():
 
 # add mechanic to service ticket
 @service_tickets_bp.route("/<ticket_id>/assign_mechanic/<mechanic_id>", methods=["PUT"])
+@limiter.limit("15 per hour")
 def assign_mechanic(ticket_id, mechanic_id):
     ticket = db.session.get(ServiceTicket, ticket_id)
     mechanic = db.session.get(Mechanic, mechanic_id)
@@ -54,6 +57,7 @@ def assign_mechanic(ticket_id, mechanic_id):
 
 # remove mechanic from ticket
 @service_tickets_bp.route("/<ticket_id>/remove_mechanic/<mechanic_id>", methods=["PUT"])
+@limiter.limit("7 per hour")
 def remove_mechanic(ticket_id, mechanic_id):
     ticket = db.session.get(ServiceTicket, ticket_id)
     mechanic = db.session.get(Mechanic, mechanic_id)
@@ -72,6 +76,7 @@ def remove_mechanic(ticket_id, mechanic_id):
 
 # gets all service tickets
 @service_tickets_bp.route("/", methods=["GET"])
+@limiter.limit("100 per day")
 def get_service_tickets():
     query = select(ServiceTicket)
     tickets = db.session.execute(query).scalars().all()
@@ -79,3 +84,31 @@ def get_service_tickets():
     if tickets:
         return service_tickets_schema.jsonify(tickets)
     return jsonify({"error": "No tickets found."}), 404
+
+
+# get one service ticket
+@service_tickets_bp.route("/<int:ticket_id>", methods=["GET"])
+@limiter.limit("100 per day")
+def get_service_ticket(ticket_id):
+    ticket = db.session.get(ServiceTicket, ticket_id)
+
+    if ticket:
+        return service_ticket_schema.jsonify(ticket), 200
+    return jsonify({"error": "Service Ticket not found."}), 404
+
+
+# delete service ticket
+@service_tickets_bp.route("/<int:ticket_id>", methods=["DELETE"])
+@limiter.limit("7 per day")
+def delete_service_ticket(ticket_id):
+    ticket = db.session.get(ServiceTicket, ticket_id)
+
+    if not ticket:
+        return jsonify({"error": "Service Ticket not found."}), 404
+
+    db.session.delete(ticket)
+    db.session.commit()
+    return (
+        jsonify({"message": f"Service Ticket {ticket_id} successfully deleted."}),
+        200,
+    )

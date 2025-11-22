@@ -3,11 +3,13 @@ from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select
 from app.models import Mechanic, db
+from app.extensions import limiter
 from . import mechanics_bp
 
 
 # create new mechanic
 @mechanics_bp.route("/", methods=["POST"])
+@limiter.limit("7 per day")
 def create_mechanic():
     try:
         mechanic_data = mechanic_schema.load(request.json)
@@ -27,6 +29,7 @@ def create_mechanic():
 
 # get all mechanics
 @mechanics_bp.route("/", methods=["GET"])
+@limiter.limit("100 per day")
 def get_mechanics():
     query = select(Mechanic)
     mechanics = db.session.execute(query).scalars().all()
@@ -38,6 +41,7 @@ def get_mechanics():
 
 # get one mechanic
 @mechanics_bp.route("/<int:mechanic_id>", methods=["GET"])
+@limiter.limit("100 per day")
 def get_mechanic(mechanic_id):
     mechanic = db.session.get(Mechanic, mechanic_id)
 
@@ -48,6 +52,7 @@ def get_mechanic(mechanic_id):
 
 # update one mechanic
 @mechanics_bp.route("/<int:mechanic_id>", methods=["PUT"])
+@limiter.limit("7 per day")
 def update_mechanic(mechanic_id):
     mechanic = db.session.get(Mechanic, mechanic_id)
 
@@ -68,6 +73,7 @@ def update_mechanic(mechanic_id):
 
 # delete mechanic
 @mechanics_bp.route("/<int:mechanic_id>", methods=["DELETE"])
+@limiter.limit("7 per day")
 def delete_mechanic(mechanic_id):
     mechanic = db.session.get(Mechanic, mechanic_id)
 
