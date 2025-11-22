@@ -3,7 +3,7 @@ from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select
 from app.models import Mechanic, db
-from app.extensions import limiter
+from app.extensions import limiter, cache
 from . import mechanics_bp
 
 
@@ -30,6 +30,7 @@ def create_mechanic():
 # get all mechanics
 @mechanics_bp.route("/", methods=["GET"])
 @limiter.limit("100 per day")
+@cache.cached(timeout=60)
 def get_mechanics():
     query = select(Mechanic)
     mechanics = db.session.execute(query).scalars().all()
@@ -42,6 +43,7 @@ def get_mechanics():
 # get one mechanic
 @mechanics_bp.route("/<int:mechanic_id>", methods=["GET"])
 @limiter.limit("100 per day")
+@cache.cached(timeout=60)
 def get_mechanic(mechanic_id):
     mechanic = db.session.get(Mechanic, mechanic_id)
 

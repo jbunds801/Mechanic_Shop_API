@@ -3,7 +3,7 @@ from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select
 from app.models import ServiceTicket, db, Mechanic, Customer
-from app.extensions import limiter
+from app.extensions import limiter, cache
 from . import service_tickets_bp
 
 
@@ -77,6 +77,7 @@ def remove_mechanic(ticket_id, mechanic_id):
 # gets all service tickets
 @service_tickets_bp.route("/", methods=["GET"])
 @limiter.limit("100 per day")
+@cache.cached(timeout=60)
 def get_service_tickets():
     query = select(ServiceTicket)
     tickets = db.session.execute(query).scalars().all()
@@ -95,6 +96,27 @@ def get_service_ticket(ticket_id):
     if ticket:
         return service_ticket_schema.jsonify(ticket), 200
     return jsonify({"error": "Service Ticket not found."}), 404
+
+
+# update service ticket
+@service_tickets_bp.route("/<int:ticket_id>", methods=["PUT"])
+@limiter.limit("15 per day")
+def update_service_ticket(ticket_id):
+    ticket = db.session.get(ServiceTicket, ticket_id)
+
+    if not ticket:
+        return jsonify({"error": "Service Ticket not found"}), 404
+
+    try:
+        service_ticket_data = service_ticket_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+
+    for key, value in service_ticket_data.items():
+        setattr(ticket, key, value)
+
+    db.session.commit()
+    return service_ticket_schema.jsonify(ticket), 200
 
 
 # delete service ticket
