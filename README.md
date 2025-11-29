@@ -1,99 +1,220 @@
-##Mechanic Shop API
+# Mechanic Shop API
 
-A RESTful API for managing customers, mechanics, service tickets, and relationships between them.
-Built with Flask, SQLAlchemy, and Marshmallow, this project simulates a mechanic shop workflow including assigning mechanics to service tickets, validating data, and preventing duplicate or invalid records.
+A RESTful API built with **Flask**, **SQLAlchemy**, and **Marshmallow** for managing a mechanic shop's core operations — including **customers**, **mechanics**, and **service tickets**.
 
-##🚀 Features
-#Customers
-Create new customers
-View all customers
-View customer by ID
-Update customer
-Delete customer
-Return helpful errors for invalid operations
+This project demonstrates relational modeling, validation, and CRUD operations across multiple entities, plus many-to-many associations between mechanics and service tickets.
 
-#Mechanics
-Create mechanics with email uniqueness validation
-View all mechanics
-View mechanic by ID
-Update mechanic
-Delete mechanic
-Return helpful errors for invalid operations
+---
 
-#Service Tickets
-Create service tickets with required customer_id
-Add/Remove Mechanic from ticket with Mechanic ↔ Service Ticket Relationship
-View all service tickets
-View a ticket by ID
-Update tickets
-Delete tickets
-Prevent duplicate assignments
-Return helpful errors for invalid operations
+## 🚀 Features
 
-#🛠️ Tech Stack
-Python 3
-Flask
-Flask SQLAlchemy
-Flask Marshmallow
-Marshmallow-SQLAlchemy
-MySQL
-Postman for API testing
+### **Customers**
 
-#📌 Validations Included
-Customer email required + optional unique constraint
-Mechanic email must be unique
-Service Ticket VIN must be exactly 17 characters
-Assign mechanic: prevents duplicate assignments
-Remove mechanic: checks if mechanic is assigned before removing
+* Create, update, delete, and retrieve customers
+* Prevent duplicate emails
+* Connect customers to their service tickets
 
-#📂 Project Structure
+### **Mechanics**
+
+* Create and manage mechanics
+* Prevent duplicate mechanic emails
+* Assign or remove mechanics from service tickets
+
+### **Service Tickets**
+
+* Create and update service tickets
+* Assign customers and mechanics
+* VIN length validation
+* Many-to-many relationship between tickets and mechanics
+
+---
+
+## 📁 Project Structure
+
+```
 Mechanic_Shop_API/
 │
 ├── app/
-│   ├── __init__.py
-│   ├── models/
+│   ├── __init__.py        # Application factory
+│   ├── models.py          # SQLAlchemy models
+│   ├── extensions.py      # db and ma instances
 │   ├── blueprints/
 │   │   ├── customers/
+│   │   │   ├── routes.py
+│   │   │   ├── schemas.py
 │   │   ├── mechanics/
-│   │   └── service_tickets/
-│   ├── schemas/
-│   └── extensions.py
+│   │   │   ├── routes.py
+│   │   │   ├── schemas.py
+│   │   ├── service_tickets/
+│   │       ├── routes.py
+│   │       ├── schemas.py
+│   └── ...
 │
-├── venv/
+├── migrations/            # Alembic migrations
+├── venv/                  # Virtual environment
 ├── requirements.txt
-└── app.py
+├── README.md
+└── run.py
+```
 
-#⚙️ Setup Instructions
-1. Clone the repository
+---
 
+## 🛠️ Installation & Setup
+
+### 1. **Clone the Repository**
+
+```bash
 git clone https://github.com/jbunds801/Mechanic_Shop_API.git
 cd Mechanic_Shop_API
+```
 
+### 2. **Create a Virtual Environment**
 
-2. Create and activate a virtual environment
-
+```bash
 python -m venv venv
-source venv/bin/activate     # Mac/Linux
-venv\Scripts\activate        # Windows
+source venv/bin/activate   # macOS/Linux
+venv\Scripts\activate      # Windows
+```
 
-3. Install dependencies
+### 3. **Install Dependencies**
 
+```bash
 pip install -r requirements.txt
+```
 
-4. Configure your database
+### 4. **Set Up the Database**
 
-Create a MySQL database:
+Update your MySQL connection string in:
 
-CREATE DATABASE mechanic_shop;
+```
+app/__init__.py
+```
 
-Update your database URI in __init__.py:
+Example:
 
-mysql+pymysql://username:password@localhost/mechanic_shop
+```python
+app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:password@localhost/mechanic_shop"
+```
 
-5. Run the application
+Run migrations:
 
+```bash
+flask db upgrade
+```
+
+### 5. **Start the Server**
+
+```bash
 flask run
+```
 
-Server runs at:
+The API will run at:
 
-http://127.0.0.1:5000
+```
+http://127.0.0.1:5000/
+```
+
+---
+
+## 📬 API Endpoints
+
+### **Customers** `/customers`
+
+| Method | Endpoint | Description        |
+| ------ | -------- | ------------------ |
+| GET    | `/`      | Get all customers  |
+| GET    | `/<id>`  | Get customer by ID |
+| POST   | `/`      | Create customer    |
+| PUT    | `/<id>`  | Update customer    |
+| DELETE | `/<id>`  | Delete customer    |
+
+---
+
+### **Mechanics** `/mechanics`
+
+| Method | Endpoint         | Description        |
+| ------ | ---------------- | ------------------ |
+| GET    | `/`              | Get all mechanics  |
+| GET    | `/<id>`          | Get mechanic by ID |
+| POST   | `/`              | Create mechanic    |
+| PUT    | `/<mechanic_id>` | Update mechanic    |
+| DELETE | `/<mechanic_id>` | Delete mechanic    |
+
+#### Mechanic ↔ Ticket Relationship
+
+| Method | Endpoint                                                     | Description                 |
+| ------ | ------------------------------------------------------------ | --------------------------- |
+| PUT    | `/service_tickets/<ticket_id>/assign-mechanic/<mechanic_id>` | Assign mechanic to ticket   |
+| PUT    | `/service_tickets/<ticket_id>/remove_mechanic/<mechanic_id>` | Remove mechanic from ticket |
+
+---
+
+### **Service Tickets** `/service_tickets`
+
+| Method | Endpoint       | Description      |
+| ------ | -------------- | ---------------- |
+| GET    | `/`            | Get all tickets  |
+| GET    | `/<ticket_id>` | Get ticket by ID |
+| POST   | `/`            | Create ticket    |
+| PUT    | `/<ticket_id>` | Update ticket    |
+| DELETE | `/<ticket_id>` | Delete ticket    |
+
+---
+
+## 🧪 Sample JSON Bodies
+
+### Create Customer
+
+```json
+{
+  "first_name": "Sarah",
+  "last_name": "Connor",
+  "email": "sarah@example.com"
+}
+```
+
+### Create Mechanic
+
+```json
+{
+  "first_name": "Kyle",
+  "last_name": "Reese",
+  "email": "kyle.reese@example.com"
+}
+```
+
+### Create Service Ticket
+
+```json
+{
+  "description": "Oil change",
+  "VIN": "1HGCM82633A004352",
+  "customer_id": 1
+}
+```
+
+---
+
+## 🧰 Technologies Used
+
+* **Flask**
+* **Flask SQLAlchemy**
+* **Marshmallow + marshmallow-sqlalchemy**
+* **MySQL**
+* **Flask-Migrate / Alembic**
+
+---
+
+## 📌 Notes
+
+* VIN field enforces a strict 17-character limit.
+* Unique constraints enforced at DB and schema level.
+* Many-to-many table used for mechanics ↔ service tickets.
+
+---
+
+## 📜 License
+
+MIT License — free to use and modify.
+
+---

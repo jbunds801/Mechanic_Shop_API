@@ -1,10 +1,44 @@
-from .schemas import mechanic_schema, mechanics_schema
+from .schemas import mechanic_schema, mechanics_schema  # , login_schema
 from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select
 from app.models import Mechanic, db
 from app.extensions import limiter, cache
 from . import mechanics_bp
+from app.utils.util import encode_token, token_required
+
+
+# mechanic admin
+@mechanics_bp.route("/login", methods=["POST"])
+def login():
+    try:
+        """credentials = login_schema.load(request.json)
+            email = -credentials["email"]
+            password = credentials["password"]
+        except ValidationError:
+            return jsonify(e.messages), 400"""
+
+        credentials = request.json
+        email = credentials["email"]
+        password = credentials["password"]
+    except KeyError:
+        return jsonify({"messages": "Must enter username and password"}), 400
+
+    query = select(Mechanic).where(Mechanic.email == email)
+    admin = db.session.execute(query).scalar_one_or_none()
+
+    if admin and admin.password == password:
+        auth_token = encode_token(admin.id)  # , admin.role.role_name
+
+        response = {
+            "status": "Success",
+            "message": "Successfully logged in",
+            "auth_token": auth_token,
+        }
+
+        return jsonify(response), 200
+    else:
+        return jsonify({"message": "Invalid email or password"}), 401
 
 
 # create new mechanic
@@ -53,7 +87,8 @@ def get_mechanic(mechanic_id):
 
 
 # update one mechanic
-@mechanics_bp.route("/<int:mechanic_id>", methods=["PUT"])
+@mechanics_bp.route("/", methods=["PUT"])
+@token_required
 @limiter.limit("7 per day")
 def update_mechanic(mechanic_id):
     mechanic = db.session.get(Mechanic, mechanic_id)
@@ -74,7 +109,9 @@ def update_mechanic(mechanic_id):
 
 
 # delete mechanic
-@mechanics_bp.route("/<int:mechanic_id>", methods=["DELETE"])
+# @mechanics_bp.route("/<int:mechanic_id>", methods=["DELETE"])
+@mechanics_bp.route("/", methods=["DELETE"])
+@token_required
 @limiter.limit("7 per day")
 def delete_mechanic(mechanic_id):
     mechanic = db.session.get(Mechanic, mechanic_id)

@@ -48,6 +48,8 @@ class Mechanic(db.Model):
     email = db.Column(db.String(360), nullable=False, unique=True)
     phone = db.Column(db.String(15), nullable=False)
     salary = db.Column(db.Float, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
 
     tickets = db.relationship(
         "ServiceTicket", secondary=service_mechanics, back_populates="mechanics"
