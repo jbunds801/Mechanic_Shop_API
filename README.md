@@ -137,8 +137,8 @@ http://127.0.0.1:5000/
 | GET    | `/`              | Get all mechanics  |
 | GET    | `/<id>`          | Get mechanic by ID |
 | POST   | `/`              | Create mechanic    |
-| PUT    | `/<mechanic_id>` | Update mechanic    |
-| DELETE | `/<mechanic_id>` | Delete mechanic    |
+| PUT    | `/`              | Update mechanic    |
+| DELETE | `/`              | Delete mechanic    |
 
 #### Mechanic ↔ Ticket Relationship
 
@@ -177,9 +177,11 @@ http://127.0.0.1:5000/
 
 ```json
 {
-  "first_name": "Kyle",
-  "last_name": "Reese",
-  "email": "kyle.reese@example.com"
+  "name": "Kyle Reese",
+  "email": "kyle.reese@example.com",
+  "phone": "888999111",
+  "salary": 65000,
+  "password": "password"
 }
 ```
 
@@ -187,8 +189,9 @@ http://127.0.0.1:5000/
 
 ```json
 {
-  "description": "Oil change",
   "VIN": "1HGCM82633A004352",
+  "service_date": "2025-11-16",
+  "service_desc": "Oil change",
   "customer_id": 1
 }
 ```
@@ -201,7 +204,6 @@ http://127.0.0.1:5000/
 * **Flask SQLAlchemy**
 * **Marshmallow + marshmallow-sqlalchemy**
 * **MySQL**
-* **Flask-Migrate / Alembic**
 
 ---
 
