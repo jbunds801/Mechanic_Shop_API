@@ -6,10 +6,12 @@ from app.models import Customer, db
 from app.extensions import limiter
 from app.extensions import cache
 from . import customers_bp
+from app.utils.util import token_required
 
 
 # create new customer
 @customers_bp.route("/", methods=["POST"])
+@token_required
 @limiter.limit("7 per hour")
 def create_customer():
     try:
@@ -30,6 +32,7 @@ def create_customer():
 
 # get all customers
 @customers_bp.route("/", methods=["GET"])
+@token_required
 @limiter.limit("100 per day")
 @cache.cached(timeout=60)
 def get_customers():
@@ -43,6 +46,7 @@ def get_customers():
 
 # get one customer
 @customers_bp.route("/<int:customer_id>", methods=["GET"])
+@token_required
 @limiter.limit("100 per day")
 @cache.cached(timeout=60)
 def get_customer(customer_id):
@@ -55,6 +59,7 @@ def get_customer(customer_id):
 
 # update one customer
 @customers_bp.route("/<int:customer_id>", methods=["PUT"])
+@token_required
 @limiter.limit("7 per day")
 def update_customer(customer_id):
     customer = db.session.get(Customer, customer_id)
@@ -76,6 +81,7 @@ def update_customer(customer_id):
 
 # delete customer
 @customers_bp.route("/<int:customer_id>", methods=["DELETE"])
+@token_required
 @limiter.limit("7 per day")
 def delete_customer(customer_id):
     customer = db.session.get(Customer, customer_id)

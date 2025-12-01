@@ -1,8 +1,9 @@
-from .schemas import mechanic_schema, mechanics_schema  # , login_schema
-from flask import request, jsonify
+from .schemas import mechanic_schema, mechanics_schema, login_schema
+from ..service_tickets.schemas import service_tickets_schema
+from flask import request, jsonify, g
 from marshmallow import ValidationError
 from sqlalchemy import select
-from app.models import Mechanic, db
+from app.models import Mechanic, db, ServiceTicket
 from app.extensions import limiter, cache
 from . import mechanics_bp
 from app.utils.util import encode_token, token_required
@@ -12,28 +13,22 @@ from app.utils.util import encode_token, token_required
 @mechanics_bp.route("/login", methods=["POST"])
 def login():
     try:
-        """credentials = login_schema.load(request.json)
-            email = -credentials["email"]
-            password = credentials["password"]
-        except ValidationError:
-            return jsonify(e.messages), 400"""
-
-        credentials = request.json
+        credentials = login_schema.load(request.json)
         email = credentials["email"]
         password = credentials["password"]
-    except KeyError:
-        return jsonify({"messages": "Must enter username and password"}), 400
+    except ValidationError:
+        return jsonify(e.messages), 400
 
     query = select(Mechanic).where(Mechanic.email == email)
-    admin = db.session.execute(query).scalar_one_or_none()
+    mechanic = db.session.execute(query).scalar_one_or_none()
 
-    if admin and admin.password == password:
-        auth_token = encode_token(admin.id)  # , admin.role.role_name
+    if mechanic and mechanic.password == password:
+        token = encode_token(mechanic.id)  # , mechanic.role.role_name
 
         response = {
             "status": "Success",
-            "message": "Successfully logged in",
-            "auth_token": auth_token,
+            "message": "Successfully logged in.",
+            "token": token,
         }
 
         return jsonify(response), 200
@@ -43,6 +38,7 @@ def login():
 
 # create new mechanic
 @mechanics_bp.route("/", methods=["POST"])
+@token_required
 @limiter.limit("7 per day")
 def create_mechanic():
     try:
@@ -63,6 +59,7 @@ def create_mechanic():
 
 # get all mechanics
 @mechanics_bp.route("/", methods=["GET"])
+@token_required
 @limiter.limit("100 per day")
 @cache.cached(timeout=60)
 def get_mechanics():
@@ -76,6 +73,7 @@ def get_mechanics():
 
 # get one mechanic
 @mechanics_bp.route("/<int:mechanic_id>", methods=["GET"])
+@token_required
 @limiter.limit("100 per day")
 @cache.cached(timeout=60)
 def get_mechanic(mechanic_id):
@@ -84,6 +82,26 @@ def get_mechanic(mechanic_id):
     if mechanic:
         return mechanic_schema.jsonify(mechanic), 200
     return jsonify({"error": "Mechanic not found."}), 404
+
+
+# get service tickets for one mechanic
+@mechanics_bp.route("/my-tickets/<int:mechanic_id>", methods=["GET"])
+@token_required
+def get_tickets(mechanic_id):
+
+    if g.current_user.id != mechanic_id:
+        return jsonify({"error": "Unauthorized: you can only access your own tickets"}), 403
+
+    mechanic = db.session.get(Mechanic, mechanic_id)
+    if not mechanic:
+        return jsonify({"error": "Mechanic not found"}), 404
+
+    tickets = db.session.query(ServiceTicket).filter_by(mechanic_id=mechanic_id).all()
+
+    if not tickets:
+        return jsonify({"error": "No tickets found for this mechanic"}), 404
+
+    return service_tickets_schema.jsonify(tickets), 20
 
 
 # update one mechanic

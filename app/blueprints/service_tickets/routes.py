@@ -5,10 +5,12 @@ from sqlalchemy import select
 from app.models import ServiceTicket, db, Mechanic, Customer
 from app.extensions import limiter, cache
 from . import service_tickets_bp
+from app.utils.util import token_required
 
 
 # create new service ticket
 @service_tickets_bp.route("/", methods=["POST"])
+@token_required
 @limiter.limit("7 per hour")
 def create_service_ticket():
     try:
@@ -39,6 +41,7 @@ def create_service_ticket():
 
 # add mechanic to service ticket
 @service_tickets_bp.route("/<ticket_id>/assign_mechanic/<mechanic_id>", methods=["PUT"])
+@token_required
 @limiter.limit("15 per hour")
 def assign_mechanic(ticket_id, mechanic_id):
     ticket = db.session.get(ServiceTicket, ticket_id)
@@ -57,6 +60,7 @@ def assign_mechanic(ticket_id, mechanic_id):
 
 # remove mechanic from ticket
 @service_tickets_bp.route("/<ticket_id>/remove_mechanic/<mechanic_id>", methods=["PUT"])
+@token_required
 @limiter.limit("7 per hour")
 def remove_mechanic(ticket_id, mechanic_id):
     ticket = db.session.get(ServiceTicket, ticket_id)
@@ -76,6 +80,7 @@ def remove_mechanic(ticket_id, mechanic_id):
 
 # gets all service tickets
 @service_tickets_bp.route("/", methods=["GET"])
+@token_required
 @limiter.limit("100 per day")
 @cache.cached(timeout=60)
 def get_service_tickets():
@@ -89,6 +94,7 @@ def get_service_tickets():
 
 # get one service ticket
 @service_tickets_bp.route("/<int:ticket_id>", methods=["GET"])
+@token_required
 @limiter.limit("100 per day")
 def get_service_ticket(ticket_id):
     ticket = db.session.get(ServiceTicket, ticket_id)
@@ -100,6 +106,7 @@ def get_service_ticket(ticket_id):
 
 # update service ticket
 @service_tickets_bp.route("/<int:ticket_id>", methods=["PUT"])
+@token_required
 @limiter.limit("15 per day")
 def update_service_ticket(ticket_id):
     ticket = db.session.get(ServiceTicket, ticket_id)
@@ -121,6 +128,7 @@ def update_service_ticket(ticket_id):
 
 # delete service ticket
 @service_tickets_bp.route("/<int:ticket_id>", methods=["DELETE"])
+@token_required
 @limiter.limit("7 per day")
 def delete_service_ticket(ticket_id):
     ticket = db.session.get(ServiceTicket, ticket_id)
