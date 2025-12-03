@@ -1,4 +1,4 @@
-from flask import request, jsonify
+from flask import request, jsonify, g
 from functools import wraps
 from datetime import datetime, timedelta, timezone
 from jose import jwt
@@ -7,11 +7,11 @@ import jose
 SECRET_KEY = "a secret key"
 
 
-def encode_token(user_id):
+def encode_token(mechanic_id):
     payload = {
         "exp": datetime.now(timezone.utc) + timedelta(days=0, hours=1),
         "iat": datetime.now(timezone.utc),
-        "sub": str(user_id),
+        "sub": str(mechanic_id),
     }
 
     token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
@@ -31,16 +31,17 @@ def token_required(f):
 
             try:
                 data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-                user_id = data["sub"]
+                mechanic_id = data["sub"]
 
             except jose.exceptions.ExpiredSignatureError:
                 return jsonify({"message": "Expired Token"}), 401
             except jose.exceptions.JWTError:
                 return jsonify({"message": "Invalid Token"}), 401
 
-            return f(user_id, *args, **kwargs)
-        
+            g.mechanic_id = mechanic_id
+            return f(*args, **kwargs)
+
         else:
-            return jsonify({'message': 'You must be logged in to access.'}), 401
+            return jsonify({"message": "You must be logged in to access."}), 401
 
     return decorated
