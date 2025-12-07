@@ -23,7 +23,7 @@ def login():
     mechanic = db.session.execute(query).scalar_one_or_none()
 
     if mechanic and mechanic.password == password:
-        token = encode_token(mechanic.id)  # , mechanic.role.role_name
+        token = encode_token(mechanic.id)
 
         response = {
             "status": "Success",
@@ -48,6 +48,7 @@ def create_mechanic():
 
     query = select(Mechanic).where(Mechanic.email == mechanic_data["email"])
     existing_mechanic = db.session.execute(query).scalars().first()
+    
     if existing_mechanic:
         return jsonify({"error": "Email already associated with an account"}), 400
 
@@ -90,6 +91,7 @@ def get_mechanic(mechanic_id):
 def get_tickets():
     mechanic_id = g.mechanic_id
     mechanic = db.session.get(Mechanic, mechanic_id)
+
     if not mechanic:
         return jsonify({"error": "Mechanic not found"}), 404
 
@@ -142,12 +144,19 @@ def update_mechanic():
 
 
 # delete mechanic
-# @mechanics_bp.route("/<int:mechanic_id>", methods=["DELETE"])
-@mechanics_bp.route("/", methods=["DELETE"])
+@mechanics_bp.route("/<int:mechanic_id>", methods=["DELETE"])
 @token_required
 @limiter.limit("7 per day")
-def delete_mechanic():
-    mechanic_id = g.mechanic_id
+def delete_mechanic(mechanic_id):    
+    print("DEBUG delete route hit")
+    current_mechanic = db.session.get(Mechanic, g.mechanic_id)
+
+    if not current_mechanic:
+        return jsonify({"error": "Unauthorized: mechanic not found"}), 403
+
+    if not current_mechanic.is_admin:
+        return jsonify({"error": "Unauthorized: admin only"}), 403
+
     mechanic = db.session.get(Mechanic, mechanic_id)
 
     if not mechanic:
@@ -155,4 +164,5 @@ def delete_mechanic():
 
     db.session.delete(mechanic)
     db.session.commit()
-    return jsonify({"message": f"mechanic {mechanic_id} successfully deleted."}), 200
+
+    return jsonify({"message": f"Mechanic {mechanic_id} successfully deleted."}), 200

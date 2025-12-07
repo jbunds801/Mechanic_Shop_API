@@ -22,7 +22,7 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
-
+        
         if "Authorization" in request.headers:
             token = request.headers["Authorization"].split(" ")[1]
 
@@ -31,14 +31,16 @@ def token_required(f):
 
             try:
                 data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-                mechanic_id = data["sub"]
+                g.mechanic_id = int(data["sub"])
+
+                print("DEBUG: g.mechanic_id =", g.mechanic_id)
 
             except jose.exceptions.ExpiredSignatureError:
                 return jsonify({"message": "Expired Token"}), 401
             except jose.exceptions.JWTError:
+               
                 return jsonify({"message": "Invalid Token"}), 401
 
-            g.mechanic_id = mechanic_id
             return f(*args, **kwargs)
 
         else:
