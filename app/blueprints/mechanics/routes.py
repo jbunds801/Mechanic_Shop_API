@@ -108,7 +108,7 @@ def get_tickets():
     return service_tickets_schema.jsonify(tickets), 200
 
 
-# get all tickets
+""" # get all tickets
 @mechanics_bp.route("/all_tickets", methods=["GET"])
 @token_required
 def all_tickets():
@@ -117,7 +117,7 @@ def all_tickets():
     if not tickets:
         return jsonify({"error": "No tickets found."}), 404
 
-    return service_tickets_schema.jsonify(tickets), 200
+    return service_tickets_schema.jsonify(tickets), 200 """
 
 
 # update one mechanic
@@ -148,7 +148,6 @@ def update_mechanic():
 @token_required
 @limiter.limit("7 per day")
 def delete_mechanic(mechanic_id):    
-    print("DEBUG delete route hit")
     current_mechanic = db.session.get(Mechanic, g.mechanic_id)
 
     if not current_mechanic:

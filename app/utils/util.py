@@ -9,7 +9,7 @@ SECRET_KEY = "a secret key"
 
 def encode_token(mechanic_id):
     payload = {
-        "exp": datetime.now(timezone.utc) + timedelta(days=0, hours=1),
+        "exp": datetime.now(timezone.utc) + timedelta(days=0, hours=10), #change back to one hour after all testing
         "iat": datetime.now(timezone.utc),
         "sub": str(mechanic_id),
     }

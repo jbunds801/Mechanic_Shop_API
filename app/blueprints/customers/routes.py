@@ -1,8 +1,8 @@
 from .schemas import customer_schema, customers_schema
-from flask import request, jsonify
+from flask import request, jsonify, g
 from marshmallow import ValidationError
 from sqlalchemy import select
-from app.models import Customer, db
+from app.models import Customer, Mechanic, db
 from app.extensions import limiter
 from app.extensions import cache
 from . import customers_bp
@@ -84,6 +84,14 @@ def update_customer(customer_id):
 @token_required
 @limiter.limit("7 per day")
 def delete_customer(customer_id):
+    current_mechanic = db.session.get(Mechanic, g.mechanic_id)
+    
+    if not current_mechanic:
+        return jsonify({"error": "Unauthorized: mechanic not found"}), 403
+    
+    if not current_mechanic.is_admin:
+        return jsonify({"error": "Unauthorized: admin only"}), 403
+    
     customer = db.session.get(Customer, customer_id)
 
     if not customer:

@@ -1,7 +1,4 @@
 from flask_sqlalchemy import SQLAlchemy
-from marshmallow import ValidationError
-from datetime import date
-from sqlalchemy import select
 
 
 db = SQLAlchemy()
@@ -9,8 +6,12 @@ db = SQLAlchemy()
 
 service_mechanics = db.Table(
     "service_mechanics",
-    db.Column("ticket_id", db.Integer, db.ForeignKey("service_tickets.id")),
-    db.Column("mechanic_id", db.Integer, db.ForeignKey("mechanics.id")),
+    db.Column(
+        "ticket_id", db.Integer, db.ForeignKey("service_tickets.id"), primary_key=True
+    ),
+    db.Column(
+        "mechanic_id", db.Integer, db.ForeignKey("mechanics.id"), primary_key=True
+    ),
 )
 
 
@@ -33,6 +34,7 @@ class ServiceTicket(db.Model):
     service_date = db.Column(db.Date, nullable=False)
     service_desc = db.Column(db.String(255), nullable=False)
     customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"))
+    is_open = db.Column(db.Boolean, default=True, nullable=False)
 
     customer = db.relationship("Customer", back_populates="tickets")
     mechanics = db.relationship(

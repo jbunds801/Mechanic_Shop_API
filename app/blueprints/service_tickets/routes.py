@@ -1,5 +1,5 @@
 from .schemas import service_ticket_schema, service_tickets_schema
-from flask import request, jsonify
+from flask import request, jsonify, g
 from marshmallow import ValidationError
 from sqlalchemy import select
 from app.models import ServiceTicket, db, Mechanic, Customer
@@ -83,12 +83,12 @@ def remove_mechanic(ticket_id, mechanic_id):
 @token_required
 @limiter.limit("100 per day")
 @cache.cached(timeout=60)
-def get_service_tickets():
-    query = select(ServiceTicket)
-    tickets = db.session.execute(query).scalars().all()
+def all_tickets():
+    tickets = db.session.query(ServiceTicket).all()
 
     if tickets:
-        return service_tickets_schema.jsonify(tickets)
+        return service_tickets_schema.jsonify(tickets), 200
+
     return jsonify({"error": "No tickets found."}), 404
 
 
@@ -96,7 +96,7 @@ def get_service_tickets():
 @service_tickets_bp.route("/<int:ticket_id>", methods=["GET"])
 @token_required
 @limiter.limit("100 per day")
-def get_service_ticket(ticket_id):
+def get_ticket(ticket_id):
     ticket = db.session.get(ServiceTicket, ticket_id)
 
     if ticket:
@@ -115,7 +115,7 @@ def update_service_ticket(ticket_id):
         return jsonify({"error": "Service Ticket not found"}), 404
 
     try:
-        service_ticket_data = service_ticket_schema.load(request.json)
+        service_ticket_data = service_ticket_schema.load(request.json, partial=True)
     except ValidationError as e:
         return jsonify(e.messages), 400
 
@@ -131,6 +131,14 @@ def update_service_ticket(ticket_id):
 @token_required
 @limiter.limit("7 per day")
 def delete_service_ticket(ticket_id):
+    current_mechanic = db.session.get(Mechanic, g.mechanic_id)
+
+    if not current_mechanic:
+        return jsonify({"error": "Unauthorized: mechanic not found"}), 403
+
+    if not current_mechanic.is_admin:
+        return jsonify({"error": "Unauthorized: admin only"}), 403
+
     ticket = db.session.get(ServiceTicket, ticket_id)
 
     if not ticket:
