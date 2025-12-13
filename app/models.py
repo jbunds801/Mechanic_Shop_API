@@ -31,9 +31,10 @@ class ServiceTicket(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     VIN = db.Column(db.String(17), nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.now(), nullable=False)
     service_date = db.Column(db.Date, nullable=False)
-    service_desc = db.Column(db.String(255), nullable=False)
     customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"))
+    service_desc = db.Column(db.String(255), nullable=False)
     is_open = db.Column(db.Boolean, default=True, nullable=False)
 
     customer = db.relationship("Customer", back_populates="tickets")

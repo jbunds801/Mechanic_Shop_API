@@ -70,7 +70,7 @@ def remove_mechanic(ticket_id, mechanic_id):
         return jsonify({"error": "Ticket or mechanic not found"}), 404
 
     if mechanic not in ticket.mechanics:
-        return jsonify({"error": "Mechanic not assigned to this ticket"})
+        return jsonify({"error": "Mechanic not assigned to this ticket"}), 400
 
     ticket.mechanics.remove(mechanic)
     db.session.commit()
@@ -113,6 +113,12 @@ def update_service_ticket(ticket_id):
 
     if not ticket:
         return jsonify({"error": "Service Ticket not found"}), 404
+
+    if "VIN" in service_ticket_data and not g.mechanic.is_admin:
+        return jsonify({"error": "Only admins can update VIN"}), 403
+
+    if not ticket.is_open:
+        return jsonify({"error": "Closed tickets cannot be edited"}), 403
 
     try:
         service_ticket_data = service_ticket_schema.load(request.json, partial=True)
