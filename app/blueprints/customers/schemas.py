@@ -9,7 +9,7 @@ class CustomerSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Customer
         load_instance = False
-
+        fields = ("id", "name", "email", "phone")
 
 customer_schema = CustomerSchema()
 customers_schema = CustomerSchema(many=True)

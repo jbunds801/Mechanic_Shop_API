@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-
+from sqlalchemy import func
 
 db = SQLAlchemy()
 
@@ -31,7 +31,7 @@ class ServiceTicket(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     VIN = db.Column(db.String(17), nullable=False)
-    created_at = db.Column(db.DateTime, default=db.func.now(), nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
     service_date = db.Column(db.Date, nullable=False)
     customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"))
     service_desc = db.Column(db.String(255), nullable=False)

@@ -1,4 +1,8 @@
-from .schemas import service_ticket_schema, service_tickets_schema
+from .schemas import (
+    service_ticket_schema,
+    service_tickets_schema,
+    edit_service_ticket_schema,
+)
 from flask import request, jsonify, g
 from marshmallow import ValidationError
 from sqlalchemy import select
@@ -41,7 +45,7 @@ def create_service_ticket():
 
 # add mechanic to service ticket
 @service_tickets_bp.route("/<ticket_id>/assign_mechanic/<mechanic_id>", methods=["PUT"])
-@token_required
+#@token_required
 @limiter.limit("15 per hour")
 def assign_mechanic(ticket_id, mechanic_id):
     ticket = db.session.get(ServiceTicket, ticket_id)
@@ -78,9 +82,42 @@ def remove_mechanic(ticket_id, mechanic_id):
     return service_ticket_schema.jsonify(ticket), 200
 
 
+# assign/remove multiple mechanics
+@service_tickets_bp.route("/<int:ticket_id>/edit", methods=["PUT"])
+#@token_required
+@limiter.limit("10 per day")
+@cache.cached(timeout=60)
+def edit_ticket_mechanics(ticket_id):
+
+    try:
+        ticket_edit_mechanics = edit_service_ticket_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+
+    ticket = db.session.get(ServiceTicket, ticket_id)
+    
+    if not ticket:
+        return jsonify({"error": "Ticket not found"}), 404
+
+    for mechanic_id in ticket_edit_mechanics["add_mechanic_ids"]:
+        mechanic = db.session.get(Mechanic, mechanic_id)
+        
+        if mechanic and mechanic not in ticket.mechanics:
+            ticket.mechanics.append(mechanic)
+
+    for mechanic_id in ticket_edit_mechanics["remove_mechanic_ids"]:
+        mechanic = db.session.get(Mechanic, mechanic_id)
+        
+        if mechanic and mechanic in ticket.mechanics:
+            ticket.mechanics.remove(mechanic)
+
+    db.session.commit()
+    return service_ticket_schema.jsonify(ticket)
+
+
 # gets all service tickets
 @service_tickets_bp.route("/", methods=["GET"])
-@token_required
+#@token_required
 @limiter.limit("100 per day")
 @cache.cached(timeout=60)
 def all_tickets():
@@ -88,6 +125,8 @@ def all_tickets():
 
     if tickets:
         return service_tickets_schema.jsonify(tickets), 200
+
+    tickets.sort(key=lambda ticket: ticket.created_at, reverse=True)
 
     return jsonify({"error": "No tickets found."}), 404
 
@@ -114,18 +153,18 @@ def update_service_ticket(ticket_id):
     if not ticket:
         return jsonify({"error": "Service Ticket not found"}), 404
 
-    if "VIN" in service_ticket_data and not g.mechanic.is_admin:
+    if "VIN" in service_ticket_update and not g.mechanic.is_admin:
         return jsonify({"error": "Only admins can update VIN"}), 403
 
     if not ticket.is_open:
         return jsonify({"error": "Closed tickets cannot be edited"}), 403
 
     try:
-        service_ticket_data = service_ticket_schema.load(request.json, partial=True)
+        service_ticket_update = service_ticket_schema.load(request.json, partial=True)
     except ValidationError as e:
         return jsonify(e.messages), 400
 
-    for key, value in service_ticket_data.items():
+    for key, value in service_ticket_update.items():
         setattr(ticket, key, value)
 
     db.session.commit()
@@ -156,3 +195,7 @@ def delete_service_ticket(ticket_id):
         jsonify({"message": f"Service Ticket {ticket_id} successfully deleted."}),
         200,
     )
+
+
+""" tickets = sorted(
+    tickets, key=lambda ticket: ticket.created_at, reverse=True) """

@@ -23,7 +23,8 @@ This project demonstrates relational modeling, validation, and CRUD operations a
 ### **Service Tickets**
 
 * Create and update service tickets
-* Assign customers and mechanics
+* Added business rules, data integrity and API safety by requiring Mechanic log in and Admin Only rules.
+* Assign mulitple mechanics and remove mechanics
 * VIN length validation
 * Many-to-many relationship between tickets and mechanics
 
@@ -50,11 +51,10 @@ Mechanic_Shop_API/
 │   │       ├── schemas.py
 │   └── ...
 │
-├── migrations/            # Alembic migrations
 ├── venv/                  # Virtual environment
-├── requirements.txt
+|── app.py
 ├── README.md
-└── run.py
+├── requirements.txt
 ```
 
 ---
@@ -153,9 +153,12 @@ http://127.0.0.1:5000/
 
 | Method | Endpoint       | Description      |
 | ------ | -------------- | ---------------- |
+| POST   | `/`            | Create ticket    |
+| PUT   | `/<ticket_id>/assign_mechanic/<mechanic_id>` | Add mechanic to ticket |
+| PUT   | `/<ticket_id>/remove_mechanic/<mechanic_id>` | Remove mechanic from ticket |
+| PUT   | `/<int:ticket_id>/edit"` | Add/Remove multiple mechanics to ticket    |
 | GET    | `/`            | Get all tickets  |
 | GET    | `/<ticket_id>` | Get ticket by ID |
-| POST   | `/`            | Create ticket    |
 | PUT    | `/<ticket_id>` | Update ticket    |
 | DELETE | `/<ticket_id>` | Delete ticket    |
 
@@ -179,7 +182,7 @@ http://127.0.0.1:5000/
 {
   "name": "Kyle Reese",
   "email": "kyle.reese@example.com",
-  "phone": "888999111",
+  "phone": "8889991111",
   "salary": 65000,
   "password": "password"
 }

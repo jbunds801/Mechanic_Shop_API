@@ -9,6 +9,7 @@ class MechanicSchema(ma.SQLAlchemyAutoSchema):
         model = Mechanic
         load_instance = False
         include_fk = True
+        fields = ("id", "name", "email", "phone", "salary", "is_admin")
 
 
 mechanic_schema = MechanicSchema()
