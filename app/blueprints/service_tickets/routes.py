@@ -45,7 +45,7 @@ def create_service_ticket():
 
 # add mechanic to service ticket
 @service_tickets_bp.route("/<ticket_id>/assign_mechanic/<mechanic_id>", methods=["PUT"])
-#@token_required
+# @token_required
 @limiter.limit("15 per hour")
 def assign_mechanic(ticket_id, mechanic_id):
     ticket = db.session.get(ServiceTicket, ticket_id)
@@ -84,7 +84,7 @@ def remove_mechanic(ticket_id, mechanic_id):
 
 # assign/remove multiple mechanics
 @service_tickets_bp.route("/<int:ticket_id>/edit", methods=["PUT"])
-#@token_required
+# @token_required
 @limiter.limit("10 per day")
 @cache.cached(timeout=60)
 def edit_ticket_mechanics(ticket_id):
@@ -95,19 +95,19 @@ def edit_ticket_mechanics(ticket_id):
         return jsonify(e.messages), 400
 
     ticket = db.session.get(ServiceTicket, ticket_id)
-    
+
     if not ticket:
         return jsonify({"error": "Ticket not found"}), 404
 
     for mechanic_id in ticket_edit_mechanics["add_mechanic_ids"]:
         mechanic = db.session.get(Mechanic, mechanic_id)
-        
+
         if mechanic and mechanic not in ticket.mechanics:
             ticket.mechanics.append(mechanic)
 
     for mechanic_id in ticket_edit_mechanics["remove_mechanic_ids"]:
         mechanic = db.session.get(Mechanic, mechanic_id)
-        
+
         if mechanic and mechanic in ticket.mechanics:
             ticket.mechanics.remove(mechanic)
 
@@ -117,7 +117,7 @@ def edit_ticket_mechanics(ticket_id):
 
 # gets all service tickets
 @service_tickets_bp.route("/", methods=["GET"])
-#@token_required
+# @token_required
 @limiter.limit("100 per day")
 @cache.cached(timeout=60)
 def all_tickets():
@@ -195,6 +195,24 @@ def delete_service_ticket(ticket_id):
         jsonify({"message": f"Service Ticket {ticket_id} successfully deleted."}),
         200,
     )
+
+
+@service_tickets_bp.route("/sortbymechanic", methods=["GET"])
+# @token_required
+@limiter.limit("100 per day")
+def sort_by_mechanic():
+    query = select(Mechanic)
+    mechanics = db.session.execute(query).scalars().all()
+
+    grouped_tickets = {}
+    for mechanic in mechanics:
+        grouped_tickets[mechanic.id] = {
+            "mechanic_id": mechanic.id,
+            "mechanic_name": mechanic.name,
+            "tickets": service_tickets_schema.dump(mechanic.tickets),
+        }
+
+    return jsonify(grouped_tickets), 200
 
 
 """ tickets = sorted(

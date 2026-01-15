@@ -1,6 +1,7 @@
 from app.extensions import ma
 from app.models import ServiceTicket
 from app.blueprints.mechanics.schemas import MechanicSchema
+from app.blueprints.customers.schemas import CustomerSchema
 from marshmallow.validate import Length
 from marshmallow import fields
 
@@ -12,6 +13,7 @@ class ServiceTicketSchema(ma.SQLAlchemyAutoSchema):
     service_desc = ma.String(required=True)
     is_open = fields.Boolean(required=False, load_default=True)
     mechanics = fields.List(fields.Nested(MechanicSchema, only=["id", "name"]))
+    customer = fields.Nested(CustomerSchema, only=["name"])
 
     class Meta:
         model = ServiceTicket
@@ -19,10 +21,11 @@ class ServiceTicketSchema(ma.SQLAlchemyAutoSchema):
         include_fk = True
         fields = (
             "id",
+            "customer_id",
+            "customer",
             "VIN",
             "created_at",
             "service_date",
-            "customer_id",
             "service_desc",
             "is_open",
             "mechanics",
