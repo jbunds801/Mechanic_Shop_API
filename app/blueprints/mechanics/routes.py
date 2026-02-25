@@ -48,7 +48,7 @@ def create_mechanic():
 
     query = select(Mechanic).where(Mechanic.email == mechanic_data["email"])
     existing_mechanic = db.session.execute(query).scalars().first()
-    
+
     if existing_mechanic:
         return jsonify({"error": "Email already associated with an account"}), 400
 
@@ -108,18 +108,6 @@ def get_tickets():
     return service_tickets_schema.jsonify(tickets), 200
 
 
-""" # get all tickets
-@mechanics_bp.route("/all_tickets", methods=["GET"])
-@token_required
-def all_tickets():
-    tickets = db.session.query(ServiceTicket).all()
-
-    if not tickets:
-        return jsonify({"error": "No tickets found."}), 404
-
-    return service_tickets_schema.jsonify(tickets), 200 """
-
-
 # update one mechanic
 @mechanics_bp.route("/", methods=["PUT"])
 @token_required
@@ -147,7 +135,7 @@ def update_mechanic():
 @mechanics_bp.route("/<int:mechanic_id>", methods=["DELETE"])
 @token_required
 @limiter.limit("7 per day")
-def delete_mechanic(mechanic_id):    
+def delete_mechanic(mechanic_id):
     current_mechanic = db.session.get(Mechanic, g.mechanic_id)
 
     if not current_mechanic:

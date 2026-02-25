@@ -3,7 +3,7 @@ from app.models import ServiceTicket
 from app.blueprints.mechanics.schemas import MechanicSchema
 from app.blueprints.customers.schemas import CustomerSchema
 from marshmallow.validate import Length
-from marshmallow import fields
+from marshmallow import fields, validates_schema, ValidationError
 
 
 class ServiceTicketSchema(ma.SQLAlchemyAutoSchema):
@@ -37,8 +37,18 @@ service_tickets_schema = ServiceTicketSchema(many=True)
 
 
 class EditServiceTicketSchema(ma.Schema):
-    add_mechanic_ids = fields.List(fields.Int(), required=True)
-    remove_mechanic_ids = fields.List(fields.Int(), required=True)
+    add_mechanic_ids = fields.List(fields.Int(), required=False, load_default=list)
+    remove_mechanic_ids = fields.List(fields.Int(), required=False, load_default=list)
+
+    @validates_schema
+    def validate_at_least_one_operation(self, data, **kwargs):
+        add_ids = data.get("add_mechanic_ids", [])
+        remove_ids = data.get("remove_mechanic_ids", [])
+
+        if len(add_ids) == 0 and len(remove_ids) == 0:
+            raise ValidationError(
+                "Provide at least one mechanic id in add_mechanic_ids or remove_mechanic_ids."
+            )
 
     class Meta:
         fields = ("add_mechanic_ids", "remove_mechanic_ids")

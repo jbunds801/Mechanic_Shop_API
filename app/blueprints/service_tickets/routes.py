@@ -5,7 +5,7 @@ from .schemas import (
 )
 from flask import request, jsonify, g
 from marshmallow import ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.models import ServiceTicket, db, Mechanic, Customer
 from app.extensions import limiter, cache
 from . import service_tickets_bp
@@ -44,7 +44,9 @@ def create_service_ticket():
 
 
 # add mechanic to service ticket
-@service_tickets_bp.route("/<ticket_id>/assign_mechanic/<mechanic_id>", methods=["PUT"])
+@service_tickets_bp.route(
+    "/<int:ticket_id>/assign_mechanic/<int:mechanic_id>", methods=["PUT"]
+)
 # @token_required
 @limiter.limit("15 per hour")
 def assign_mechanic(ticket_id, mechanic_id):
@@ -63,7 +65,9 @@ def assign_mechanic(ticket_id, mechanic_id):
 
 
 # remove mechanic from ticket
-@service_tickets_bp.route("/<ticket_id>/remove_mechanic/<mechanic_id>", methods=["PUT"])
+@service_tickets_bp.route(
+    "/<int:ticket_id>/remove_mechanic/<int:mechanic_id>", methods=["PUT"]
+)
 @token_required
 @limiter.limit("7 per hour")
 def remove_mechanic(ticket_id, mechanic_id):
@@ -84,9 +88,8 @@ def remove_mechanic(ticket_id, mechanic_id):
 
 # assign/remove multiple mechanics
 @service_tickets_bp.route("/<int:ticket_id>/edit", methods=["PUT"])
-# @token_required
+@token_required
 @limiter.limit("10 per day")
-@cache.cached(timeout=60)
 def edit_ticket_mechanics(ticket_id):
 
     try:
@@ -94,18 +97,28 @@ def edit_ticket_mechanics(ticket_id):
     except ValidationError as e:
         return jsonify(e.messages), 400
 
+    add_ids = ticket_edit_mechanics.get("add_mechanic_ids", [])
+    remove_ids = ticket_edit_mechanics.get("remove_mechanic_ids", [])
+
     ticket = db.session.get(ServiceTicket, ticket_id)
 
     if not ticket:
         return jsonify({"error": "Ticket not found"}), 404
 
-    for mechanic_id in ticket_edit_mechanics["add_mechanic_ids"]:
+    current_mechanic = db.session.get(Mechanic, g.mechanic_id)
+    if not current_mechanic:
+        return jsonify({"error": "Unauthorized: mechanic not found"}), 403
+
+    if not current_mechanic.is_admin and current_mechanic not in ticket.mechanics:
+        return jsonify({"error": "Unauthorized: admin or assigned mechanic only"}), 403
+
+    for mechanic_id in add_ids:
         mechanic = db.session.get(Mechanic, mechanic_id)
 
         if mechanic and mechanic not in ticket.mechanics:
             ticket.mechanics.append(mechanic)
 
-    for mechanic_id in ticket_edit_mechanics["remove_mechanic_ids"]:
+    for mechanic_id in remove_ids:
         mechanic = db.session.get(Mechanic, mechanic_id)
 
         if mechanic and mechanic in ticket.mechanics:
@@ -119,16 +132,36 @@ def edit_ticket_mechanics(ticket_id):
 @service_tickets_bp.route("/", methods=["GET"])
 # @token_required
 @limiter.limit("100 per day")
-@cache.cached(timeout=60)
 def all_tickets():
-    tickets = db.session.query(ServiceTicket).all()
+    try:
+        page = int(request.args.get("page", 1))
+        per_page = int(request.args.get("per_page", 5))
+        query = select(ServiceTicket)
+        paginated = db.paginate(query, page=page, per_page=per_page)
 
-    if tickets:
-        return service_tickets_schema.jsonify(tickets), 200
+        sorted_tickets = sorted(
+            paginated.items, key=lambda ticket: ticket.created_at, reverse=True
+        )
 
-    tickets.sort(key=lambda ticket: ticket.created_at, reverse=True)
+        return (
+            jsonify(
+                {
+                    "tickets": service_tickets_schema.dump(sorted_tickets),
+                    "total": paginated.total,
+                    "pages": paginated.pages,
+                    "current_page": page,
+                }
+            ),
+            200,
+        )
 
-    return jsonify({"error": "No tickets found."}), 404
+    except (ValueError, TypeError):
+        tickets = db.session.query(ServiceTicket).all()
+
+        if tickets:
+            return service_tickets_schema.jsonify(tickets), 200
+
+        return jsonify({"error": "No tickets found."}), 404
 
 
 # get one service ticket
@@ -153,9 +186,6 @@ def update_service_ticket(ticket_id):
     if not ticket:
         return jsonify({"error": "Service Ticket not found"}), 404
 
-    if "VIN" in service_ticket_update and not g.mechanic.is_admin:
-        return jsonify({"error": "Only admins can update VIN"}), 403
-
     if not ticket.is_open:
         return jsonify({"error": "Closed tickets cannot be edited"}), 403
 
@@ -163,6 +193,13 @@ def update_service_ticket(ticket_id):
         service_ticket_update = service_ticket_schema.load(request.json, partial=True)
     except ValidationError as e:
         return jsonify(e.messages), 400
+
+    current_mechanic = db.session.get(Mechanic, g.mechanic_id)
+    if not current_mechanic:
+        return jsonify({"error": "Unauthorized: mechanic not found"}), 403
+
+    if "VIN" in service_ticket_update and not current_mechanic.is_admin:
+        return jsonify({"error": "Only admins can update VIN"}), 403
 
     for key, value in service_ticket_update.items():
         setattr(ticket, key, value)
@@ -197,22 +234,51 @@ def delete_service_ticket(ticket_id):
     )
 
 
-@service_tickets_bp.route("/sortbymechanic", methods=["GET"])
-# @token_required
+# Sort mechanics by ticket count (most tickets first)
+@service_tickets_bp.route("/sort_by_mechanic", methods=["GET"])
+@token_required
 @limiter.limit("100 per day")
+@cache.cached(timeout=300)
 def sort_by_mechanic():
     query = select(Mechanic)
     mechanics = db.session.execute(query).scalars().all()
 
+    sorted_mechanics = sorted(mechanics, key=lambda m: len(m.tickets), reverse=True)
+
     grouped_tickets = {}
-    for mechanic in mechanics:
+    for mechanic in sorted_mechanics:
+        sorted_tickets = sorted(mechanic.tickets, key=lambda ticket: ticket.created_at)
+
         grouped_tickets[mechanic.id] = {
             "mechanic_id": mechanic.id,
             "mechanic_name": mechanic.name,
-            "tickets": service_tickets_schema.dump(mechanic.tickets),
+            "ticket_count": len(mechanic.tickets),
+            "tickets": service_tickets_schema.dump(sorted_tickets),
         }
 
     return jsonify(grouped_tickets), 200
+
+
+# search by customer with phone number
+@service_tickets_bp.route("/tickets_by_customer", methods=["GET"])
+@token_required
+def tickets_by_customer():
+    phone = request.args.get("phone")
+
+    if not phone:
+        return jsonify({"error": "Phone number required."}), 400
+
+    query = (
+        select(ServiceTicket)
+        .join(Customer)
+        .where(func.replace(Customer.phone, "-", "").like(f"%{phone}%"))
+    )
+    tickets = db.session.execute(query).scalars().all()
+
+    if tickets:
+        sorted_tickets = sorted(tickets, key=lambda ticket: ticket.created_at)
+        return service_tickets_schema.jsonify(sorted_tickets)
+    return jsonify({"error": "No tickets found for customer."}), 404
 
 
 """ tickets = sorted(
