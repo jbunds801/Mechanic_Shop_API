@@ -3,7 +3,7 @@ from sqlalchemy import func
 
 db = SQLAlchemy()
 
-
+""" 
 service_mechanics = db.Table(
     "service_mechanics",
     db.Column(
@@ -13,7 +13,7 @@ service_mechanics = db.Table(
         "mechanic_id", db.Integer, db.ForeignKey("mechanics.id"), primary_key=True
     ),
 )
-
+ """
 
 class Customer(db.Model):
     __tablename__ = "customers"
@@ -39,7 +39,7 @@ class ServiceTicket(db.Model):
 
     customer = db.relationship("Customer", back_populates="tickets")
     mechanics = db.relationship(
-        "Mechanic", secondary=service_mechanics, back_populates="tickets"
+        "MechanicServiceTicket", back_populates="ticket"
     )
 
 
@@ -55,5 +55,20 @@ class Mechanic(db.Model):
     is_admin = db.Column(db.Boolean, default=False)
 
     tickets = db.relationship(
-        "ServiceTicket", secondary=service_mechanics, back_populates="mechanics"
+        "MechanicServiceTicket", back_populates="mechanic"
     )
+
+
+class MechanicServiceTicket(db.Model):
+    __tablename__ = "mechanic_service_tickets"
+     
+    id = db. Column(db.Integer, primary_key=True)
+    mechanic_id = db.Column(db.Integer, db.ForeignKey("mechanics.id"), nullable=False)
+    ticket_id = db.Column(db.Integer, db.ForeignKey("service_tickets.id"), nullable=False)
+    assigned_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
+    started_at = db.Column(db.Date, nullable=True)
+     
+    mechanic = db.relationship("Mechanic", back_populates="tickets")
+    ticket = db.relationship("ServiceTicket", back_populates="mechanics")   
+    
+    

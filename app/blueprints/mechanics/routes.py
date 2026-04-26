@@ -3,7 +3,7 @@ from ..service_tickets.schemas import service_tickets_schema
 from flask import request, jsonify, g
 from marshmallow import ValidationError
 from sqlalchemy import select
-from app.models import Mechanic, db, ServiceTicket
+from app.models import Mechanic, db, ServiceTicket, MechanicServiceTicket
 from app.extensions import limiter, cache
 from . import mechanics_bp
 from app.utils.util import encode_token, token_required
@@ -98,7 +98,7 @@ def get_tickets():
     tickets = (
         db.session.query(ServiceTicket)
         .join(ServiceTicket.mechanics)
-        .filter(Mechanic.id == mechanic_id)
+        .filter(MechanicServiceTicket.mechanic_id == mechanic_id)
         .all()
     )
 

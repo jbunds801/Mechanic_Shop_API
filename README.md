@@ -313,7 +313,13 @@ GET /service_tickets?page=2&per_page=20
 ### Core Functionality
 * VIN field enforces a strict 17-character limit
 * Unique constraints enforced at both DB and schema level
-* Many-to-many table (`service_mechanics`) for flexible mechanic ↔ service ticket associations
+* Many-to-many association object (`MechanicServiceTicket`) for flexible mechanic ↔ service ticket associations, with support for extra fields (`assigned_at`, `started_at`)
+
+(The mechanic ↔ service ticket relationship was upgraded from a simple `secondary=` many-to-many (hidden join table `service_mechanics`) to a full **association object model** (`MechanicServiceTicket`). This allows storing extra data on each relationship row:
+- `assigned_at` — automatically recorded when a mechanic is assigned
+- `started_at` — optional date for when the mechanic began work
+
+Route logic updated accordingly: `db.session.add(MechanicServiceTicket(...))` to assign, `db.session.delete(mst)` to remove, and generator expressions (`any()`, `next()`) for membership checks.)
 
 ### Recent Enhancements
 * **Pagination implemented** across all list endpoints (customers, service tickets) with configurable page sizes
@@ -332,6 +338,8 @@ GET /service_tickets?page=2&per_page=20
 * `Mechanic.email` - UNIQUE constraint
 * `ServiceTicket.VIN` - 17 character validation
 * Foreign keys enforce referential integrity
+* `MechanicServiceTicket.assigned_at` - auto-set to current timestamp on creation
+* `MechanicServiceTicket.started_at` - optional, intended for tracking when work began
 
 ### Best Practices Implemented
 * Blueprint-based route organization for scalability

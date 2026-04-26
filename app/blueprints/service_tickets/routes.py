@@ -6,7 +6,7 @@ from .schemas import (
 from flask import request, jsonify, g
 from marshmallow import ValidationError
 from sqlalchemy import select, func
-from app.models import ServiceTicket, db, Mechanic, Customer
+from app.models import ServiceTicket, db, Mechanic, Customer, MechanicServiceTicket
 from app.extensions import limiter, cache
 from . import service_tickets_bp
 from app.utils.util import token_required
@@ -56,10 +56,10 @@ def assign_mechanic(ticket_id, mechanic_id):
     if not ticket or not mechanic:
         return jsonify({"error": "Ticket or mechanic not found"}), 404
 
-    if mechanic in ticket.mechanics:
+    if any(mst.mechanic_id == mechanic_id for mst in ticket.mechanics):
         return jsonify({"message": "Mechanic already assigned"}), 200
 
-    ticket.mechanics.append(mechanic)
+    db.session.add(MechanicServiceTicket(mechanic_id=mechanic_id, ticket_id=ticket_id))
     db.session.commit()
     return service_ticket_schema.jsonify(ticket), 200
 
@@ -77,10 +77,12 @@ def remove_mechanic(ticket_id, mechanic_id):
     if not ticket or not mechanic:
         return jsonify({"error": "Ticket or mechanic not found"}), 404
 
-    if mechanic not in ticket.mechanics:
+    #generator expression to find the MechanicServiceTicket to remove
+    mst_to_remove = next((mst for mst in ticket.mechanics if mst.mechanic_id == mechanic_id), None)
+    if not mst_to_remove:
         return jsonify({"error": "Mechanic not assigned to this ticket"}), 400
 
-    ticket.mechanics.remove(mechanic)
+    db.session.delete(mst_to_remove)
     db.session.commit()
 
     return service_ticket_schema.jsonify(ticket), 200
@@ -109,20 +111,19 @@ def edit_ticket_mechanics(ticket_id):
     if not current_mechanic:
         return jsonify({"error": "Unauthorized: mechanic not found"}), 403
 
-    if not current_mechanic.is_admin and current_mechanic not in ticket.mechanics:
+    if not current_mechanic.is_admin and not any(mst.mechanic_id == current_mechanic.id for mst in ticket.mechanics):
         return jsonify({"error": "Unauthorized: admin or assigned mechanic only"}), 403
 
     for mechanic_id in add_ids:
         mechanic = db.session.get(Mechanic, mechanic_id)
 
-        if mechanic and mechanic not in ticket.mechanics:
-            ticket.mechanics.append(mechanic)
+        if mechanic and not any(mst.mechanic_id == mechanic_id for mst in ticket.mechanics):
+            db.session.add(MechanicServiceTicket(mechanic_id=mechanic_id, ticket_id=ticket_id))
 
     for mechanic_id in remove_ids:
-        mechanic = db.session.get(Mechanic, mechanic_id)
-
-        if mechanic and mechanic in ticket.mechanics:
-            ticket.mechanics.remove(mechanic)
+        mst = next((mst for mst in ticket.mechanics if mst.mechanic_id == mechanic_id), None)
+        if mst:
+            db.session.delete(mst)
 
     db.session.commit()
     return service_ticket_schema.jsonify(ticket)
@@ -247,7 +248,8 @@ def sort_by_mechanic():
 
     grouped_tickets = {}
     for mechanic in sorted_mechanics:
-        sorted_tickets = sorted(mechanic.tickets, key=lambda ticket: ticket.created_at)
+        actual_tickets = [mst.ticket for mst in mechanic.tickets]
+        sorted_tickets = sorted(actual_tickets, key=lambda ticket: ticket.created_at)
 
         grouped_tickets[mechanic.id] = {
             "mechanic_id": mechanic.id,
@@ -259,7 +261,7 @@ def sort_by_mechanic():
     return jsonify(grouped_tickets), 200
 
 
-# search by customer with phone number
+# search for ticket by customer phone number
 @service_tickets_bp.route("/tickets_by_customer", methods=["GET"])
 @token_required
 def tickets_by_customer():

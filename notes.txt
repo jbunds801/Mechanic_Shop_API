@@ -1,0 +1,5 @@
+1. the started at date isn't required for MechanicServiceTicket, but I would like to make it 
+required in order to close the ticket/finish the ticket.
+
+2. maybe add a service ticket route that sorts tickets by mechanic that are open, and a separate for 
+tickets by mechanic that are closed on the mechanic route?
